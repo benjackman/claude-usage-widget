@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 @main
@@ -31,6 +32,18 @@ struct ClaudeUsageApp: App {
 struct UsagePanel: View {
     @ObservedObject var model: UsageModel
     @AppStorage("menuBarStyle") private var style: MenuBarStyle = .barsAndPercent
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var loginItemError: String?
+
+    private func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginItemError = nil
+        } catch {
+            loginItemError = error.localizedDescription
+        }
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -52,7 +65,7 @@ struct UsagePanel: View {
                 }
             }
 
-            if let e = model.error {
+            if let e = model.error ?? loginItemError {
                 Text(e).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
 
@@ -62,6 +75,14 @@ struct UsagePanel: View {
             }
             .pickerStyle(.segmented)
             .font(.caption)
+
+            Toggle("Launch at login", isOn: Binding(
+                get: { launchAtLogin },
+                set: { setLaunchAtLogin($0) }
+            ))
+            .toggleStyle(.checkbox)
+            .font(.caption)
+            .onAppear { launchAtLogin = SMAppService.mainApp.status == .enabled }
 
             HStack {
                 if let t = model.lastUpdated {
