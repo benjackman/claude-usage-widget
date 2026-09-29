@@ -3,12 +3,19 @@ import SwiftUI
 @main
 struct ClaudeUsageApp: App {
     @StateObject private var model = UsageModel()
+    @AppStorage("menuBarStyle") private var style: MenuBarStyle = .barsAndPercent
 
     var body: some Scene {
         MenuBarExtra {
             UsagePanel(model: model)
         } label: {
-            Text(menuTitle)
+            if style == .text || model.session == nil {
+                Text(menuTitle)
+            } else {
+                Image(nsImage: MenuBarBars.image(session: model.session?.percent ?? 0,
+                                                 weekly: model.weekly?.percent ?? 0,
+                                                 showPercent: style == .barsAndPercent))
+            }
         }
         .menuBarExtraStyle(.window)
     }
@@ -23,6 +30,7 @@ struct ClaudeUsageApp: App {
 
 struct UsagePanel: View {
     @ObservedObject var model: UsageModel
+    @AppStorage("menuBarStyle") private var style: MenuBarStyle = .barsAndPercent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -49,6 +57,12 @@ struct UsagePanel: View {
             }
 
             Divider()
+            Picker("Menu bar", selection: $style) {
+                ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .font(.caption)
+
             HStack {
                 if let t = model.lastUpdated {
                     Text("Updated \(t.formatted(date: .omitted, time: .shortened))")

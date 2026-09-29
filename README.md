@@ -2,7 +2,7 @@
 
 A tiny macOS menu bar app that shows your Claude plan usage (5-hour session and weekly limits) without having to open the Claude app.
 
-Menu bar shows `✳︎ <session>% · <weekly>%`; click for per-limit bars and reset times. Refreshes every 2 minutes.
+The menu bar shows two mini bars (5-hour session on top, weekly below), optionally with percentages, or plain text `✳︎ <session>% · <weekly>%` — switch in the panel. Click for per-limit bars and reset times. Refreshes every 2 minutes.
 
 ## Setup
 
