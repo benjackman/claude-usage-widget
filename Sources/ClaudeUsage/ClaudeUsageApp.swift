@@ -65,6 +65,11 @@ struct UsagePanel: View {
                 }
             }
 
+            if let until = model.rateLimitedUntil {
+                Text("Rate limited — retrying \(until.formatted(.relative(presentation: .named)))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             if let e = model.error ?? loginItemError {
                 Text(e).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
