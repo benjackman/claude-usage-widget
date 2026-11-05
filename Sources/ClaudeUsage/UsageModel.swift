@@ -77,6 +77,9 @@ final class UsageModel: ObservableObject {
             lastUpdated = Date()
         } catch {
             self.error = error.localizedDescription
+            // Without a login the numbers can't update, so don't leave old ones on show.
+            if case Credentials.Failure.loginExpired = error { windows = [] }
+            if case Credentials.Failure.notLoggedIn = error { windows = [] }
         }
         schedule(after: pollInterval)
     }

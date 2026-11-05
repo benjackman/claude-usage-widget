@@ -91,7 +91,7 @@ struct UsagePanel: View {
 
             HStack {
                 if let t = model.lastUpdated {
-                    Text("Updated \(t.formatted(date: .omitted, time: .shortened))")
+                    Text("Updated \(t.formatted(date: Calendar.current.isDateInToday(t) ? .omitted : .abbreviated, time: .shortened))")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

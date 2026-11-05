@@ -9,12 +9,14 @@ enum Credentials {
     static let tokenURL = URL(string: "https://console.anthropic.com/v1/oauth/token")!
 
     enum Failure: LocalizedError {
-        case notLoggedIn, malformed, refreshFailed(String)
+        case notLoggedIn, loginExpired, malformed, refreshFailed(String), keychainWriteFailed
         var errorDescription: String? {
             switch self {
-            case .notLoggedIn: return "Not logged in — run `claude` and /login"
+            case .notLoggedIn: return "Not logged in. To fix: open Terminal, run claude, then type /login."
+            case .loginExpired: return "Claude Code login expired. To fix: open Terminal, run claude, then type /login."
             case .malformed: return "Unrecognised credentials format"
             case .refreshFailed(let m): return "Token refresh failed: \(m)"
+            case .keychainWriteFailed: return "Couldn't save the new token. To fix: open Terminal, run claude, then type /login."
             }
         }
     }
@@ -36,8 +38,10 @@ enum Credentials {
             "grant_type": "refresh_token", "refresh_token": refresh, "client_id": clientID,
         ])
         let (data, resp) = try await URLSession.shared.data(for: req)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200,
-              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        // Refresh tokens have a limited lifetime, so this needs a fresh login rather than a retry.
+        if json?["error"] as? String == "invalid_grant" { throw Failure.loginExpired }
+        guard (resp as? HTTPURLResponse)?.statusCode == 200, let json,
               let newToken = json["access_token"] as? String else {
             throw Failure.refreshFailed(String(data: data, encoding: .utf8)?.prefix(200).description ?? "")
         }
@@ -46,6 +50,9 @@ enum Credentials {
         if let r = json["refresh_token"] as? String { oauth["refreshToken"] = r }
         if let secs = json["expires_in"] as? Double {
             oauth["expiresAt"] = (Date().timeIntervalSince1970 + secs) * 1000
+        }
+        if let secs = json["refresh_token_expires_in"] as? Double {
+            oauth["refreshTokenExpiresAt"] = (Date().timeIntervalSince1970 + secs) * 1000
         }
         root["claudeAiOauth"] = oauth
         try writeRoot(root)
@@ -68,7 +75,8 @@ enum Credentials {
             .trimmingCharacters(in: CharacterSet(charactersIn: " \""))
             ?? NSUserName()
         let json = String(data: try JSONSerialization.data(withJSONObject: root), encoding: .utf8)!
-        _ = try run(["add-generic-password", "-U", "-a", account, "-s", service, "-w", json])
+        let result = try run(["add-generic-password", "-U", "-a", account, "-s", service, "-w", json])
+        guard result.status == 0 else { throw Failure.keychainWriteFailed }
     }
 
     private static func run(_ args: [String]) throws -> (status: Int32, stdout: String) {
